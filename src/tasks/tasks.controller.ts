@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Logger,
   Param,
   Patch,
   Post,
@@ -16,35 +17,55 @@ import { GetTaskFilterDto } from './dto/get-task-filter.dto';
 import { UpdateTaskStatusDto } from './dto/update-task.dto';
 import { Task } from './task.entity';
 import { AuthGuard } from '@nestjs/passport';
+import { GetUser } from 'src/auth/get-user.decorator';
+import { User } from 'src/auth/user.entity';
 
 @Controller('tasks')
-  @UseGuards(AuthGuard())
+@UseGuards(AuthGuard())
 export class TasksController {
-  // dependancies injection in our constructor
+  private logger = new Logger('Task Controller')
   constructor(private tasksService: TasksService) {}
 
   // GET ALL TASKS
   @Get()
-  getAllTasks(@Query() filterDto: GetTaskFilterDto): Promise<Task[]> {
-    return this.tasksService.getTask(filterDto);
+  getAllTasks(
+    @Query() filterDto: GetTaskFilterDto,
+    @GetUser() user: User,
+  ): Promise<Task[]> {
+    this.logger.verbose(`User "${user.username}" retreving all Task. Filters "${JSON.stringify(filterDto)}"`)
+    return this.tasksService.getTask(filterDto, user);
   }
 
   /* GET TASK BY ID */
   @Get(':id')
-  getTaskById(@Param('id') id: string): Promise<Task> {
-    return this.tasksService.getTaskById(id);
+  getTaskById(@Param('id') id: string, @GetUser() user: User): Promise<Task> {
+    this.logger.verbose(`
+      User "${user.username}" trying to retrieve Task with id "${id}"
+      `);  
+    return this.tasksService.getTaskById(id, user);
   }
 
   // CREATE TASK CONTROLLER
   @Post()
-  createTask(@Body() createTaskDto: CreateTaskDto): Promise<Task> {
-    return this.tasksService.createTask(createTaskDto);
+  createTask(
+    @Body() createTaskDto: CreateTaskDto,
+    @GetUser() user: User,
+  ): Promise<Task> {
+     this.logger.verbose(`
+      User "${user.username}" creating a new Task. Data: "${JSON.stringify(
+        createTaskDto,
+      )}"
+      `);
+    return this.tasksService.createTask(createTaskDto, user);
   }
 
   // DELETE TASK CONTROLLER
   @Delete(':id')
-  deleteTask(@Param('id') id: string): Promise<void> {
-    return this.tasksService.deleteTask(id);
+  deleteTask(@Param('id') id: string, @GetUser() user: User): Promise<void> {
+    this.logger.verbose(`
+      User "${user.username}" trying to delete Task with id "${id}"
+      `);
+    return this.tasksService.deleteTask(id, user);
   }
 
   // UPDATE TASK STATUS
@@ -52,8 +73,12 @@ export class TasksController {
   updateTaskStatus(
     @Param('id') id: string,
     @Body() updateTaskStatusDto: UpdateTaskStatusDto,
+    @GetUser() user: User,
   ): Promise<Task> {
     const { status } = updateTaskStatusDto;
-    return this.tasksService.updateTaskStatus(id, status);
+    this.logger.verbose(`
+      User "${user.username}" trying to update Task with id "${id}" status to "${status}"
+      `);
+    return this.tasksService.updateTaskStatus(id, status, user);
   }
 }
